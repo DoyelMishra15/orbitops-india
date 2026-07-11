@@ -14,9 +14,11 @@ class Settings:
 
     # CORS: comma-separated list of allowed origins
     CORS_ORIGINS: list[str] = os.environ.get(
-        "CORS_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
-    ).split(",")
+    "CORS_ORIGINS",
+    "http://localhost:5173,"
+    "http://127.0.0.1:5173,"
+    "https://ominous-garbanzo-pjr6wq67qv5gh7j67-5173.app.github.dev",
+).split(",")
 
     # TLE data source
     CELESTRAK_BASE_URL: str = os.environ.get(
