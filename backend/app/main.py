@@ -1,5 +1,6 @@
 """OrbitOps India — FastAPI application entrypoint."""
 from __future__ import annotations
+from fastapi.encoders import jsonable_encoder
 
 import logging
 
@@ -39,11 +40,20 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc: RequestValidationError):
+    # exc.errors() can include raw exception objects (e.g. under "ctx") from
+    # custom Pydantic validators that raise ValueError — those aren't JSON
+    # serializable on their own, so stringify anything under "ctx" first.
+    safe_errors = []
+    for error in exc.errors():
+        error = dict(error)
+        if "ctx" in error:
+            error["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
+        safe_errors.append(error)
+
     return JSONResponse(
         status_code=422,
-        content={"detail": "Validation error", "errors": exc.errors()},
+        content={"detail": "Validation error", "errors": jsonable_encoder(safe_errors)},
     )
-
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc: StarletteHTTPException):
