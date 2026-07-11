@@ -59,7 +59,7 @@ def test_valid_time_window():
 
 
 def test_time_window_requires_tz():
-    naive = datetime.utcnow()
+    naive = datetime.now()
     with pytest.raises(ValidationError):
         validate_time_window(naive, 1.0)
 
