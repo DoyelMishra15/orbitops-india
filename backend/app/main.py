@@ -1,10 +1,10 @@
 """OrbitOps India — FastAPI application entrypoint."""
 from __future__ import annotations
-from fastapi.encoders import jsonable_encoder
 
 import logging
 
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -31,7 +31,6 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"https://.*-5173\.app\.github\.dev",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,6 +53,7 @@ async def validation_exception_handler(request, exc: RequestValidationError):
         status_code=422,
         content={"detail": "Validation error", "errors": jsonable_encoder(safe_errors)},
     )
+
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc: StarletteHTTPException):
