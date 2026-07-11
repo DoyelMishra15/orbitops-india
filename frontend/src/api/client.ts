@@ -10,7 +10,8 @@ import type {
 
 const API_BASE_URL: string =
   (import.meta as unknown as { env: Record<string, string> }).env
-    ?.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+    ?.VITE_API_BASE_URL ||
+"https://ominous-garbanzo-pjr6wq67qv5gh7j67-8000.app.github.dev/api/v1";
 
 export class ApiRequestError extends Error {
   status: number;
