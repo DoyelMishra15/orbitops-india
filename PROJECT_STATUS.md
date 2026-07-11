@@ -1,95 +1,76 @@
 # Project Status
 
-_Last updated as part of the build pipeline that produced this archive._
+_Last verified: this pass, against a sandbox with real PyPI/npm network access._
 
 ## Summary
 
-OrbitOps India is **feature-complete for the MVP scope** described in the
-build brief: satellite pass prediction (Skyfield/SGP4), an explainable
-weighted-interval-scheduling conflict-free scheduler, a full React/TS
-frontend consuming a real FastAPI backend, live + offline-demo orbital
-data modes, export, and full documentation.
+OrbitOps India is **feature-complete for the MVP scope**: satellite pass
+prediction (Skyfield/SGP4), an explainable weighted-interval-scheduling
+conflict-free scheduler, a full React/TS frontend consuming a real FastAPI
+backend, live + offline-demo orbital data modes, export, and full
+documentation. Unlike the build pass that produced this archive, this
+verification pass **had outbound access to PyPI and npm**, so the backend
+test suite, the frontend production build, and a live running server were
+all actually executed rather than only syntax-checked.
 
-## Build environment constraint (please read)
+## What was actually run this pass
 
-The sandbox this project was built in has **no outbound network
-access** (`pip install`, `npm install`, and direct HTTP all confirmed
-blocked — see commands below). That means the `fastapi`, `pydantic`,
-`skyfield`, `sgp4`, and Node/`react`/`vite` toolchains could not be
-installed *in this sandbox* to run a live `pytest` or `npm run build`.
-**GitHub Codespaces has normal network access**, so `postCreate.sh` will
-install everything and the full stack will run there exactly as
-designed.
+| Check | Result |
+|---|---|
+| Backend test suite (`pytest -v`, 44 tests: validation, scheduler, pass predictor, API) | ✅ **44/44 passed** |
+| Frontend production build (`tsc -b && vite build`) | ✅ Built cleanly, zero TypeScript errors |
+| Backend server boot (`uvicorn app.main:app`) + `/health` and `/` | ✅ Responding correctly |
+| Root-level HTTP smoke test (`tests/smoke_test.sh`) against the live server | ✅ All checks passed |
+| Live Celestrak fetch | ⏳ Still not exercised — this sandbox's network allowlist covers package registries (PyPI, npm) but not `celestrak.org`. Code path is unchanged from the original build; run it yourself in Codespaces or any unrestricted environment to confirm live-mode fetch, with `FORCE_DEMO_MODE=false` (the default). |
 
-What this means concretely for verification honesty:
+## Bug found and fixed this pass
 
-| Check | Status here | How to complete it |
-|---|---|---|
-| Python syntax, all 24 backend files | ✅ Done (`python3 -m py_compile`, zero errors) | — |
-| JSON/config validity (devcontainer, package.json, tsconfig×3) | ✅ Done | — |
-| Domain validation logic (lat/lon/alt/elevation/time-window rules) | ✅ **Actually executed**, 14/14 cases pass | `pytest backend/tests/test_validation.py` in Codespaces for the full pytest-formatted version |
-| Scheduling algorithm (weighted interval scheduling DP) | ✅ **Actually executed**: 3 targeted cases + **200 randomized brute-force cross-checks**, all passing | `pytest backend/tests/test_scheduler.py` |
-| Pass prediction (Skyfield/SGP4) | ⏳ Written, not executable here (no `skyfield`/`sgp4` install) | `pytest backend/tests/test_pass_predictor.py` |
-| FastAPI endpoints (TestClient) | ⏳ Written, not executable here (no `fastapi` install) | `pytest backend/tests/test_api.py` |
-| Frontend TypeScript build | ⏳ Written, not executable here (no `npm install`) | `cd frontend && npm install && npm run build` |
-| Live Celestrak fetch | ⏳ Code written and reviewed; requires network to exercise | Run the app in Codespaces; `FORCE_DEMO_MODE=false` is the default |
+The original build's global validation-error handler
+(`backend/app/main.py::validation_exception_handler`) returned
+`exc.errors()` directly in the JSON response. Pydantic v2 includes the raw
+Python exception object under each error's `"ctx"` key when a custom
+validator raises `ValueError` (e.g. the `duration_hours` bound check) —
+and raw exception objects aren't JSON-serializable. This meant **any
+request that failed a custom-validator check crashed with a 500 instead of
+returning the intended 422**, silently swallowing the real error message.
+It was only caught because `test_predict_passes_rejects_excessive_duration`
+exercises exactly that path.
 
-### Proof of the constraint (reproducible)
+Fix: stringify the contents of `"ctx"` before serializing. Covered by the
+existing test — no new test needed, it just now passes for the right
+reason. Also fixed a stray `datetime.utcnow()` deprecation warning in
+`test_validation.py` (harmless, but noisy under Python 3.12).
 
-```
-$ pip install --break-system-packages fastapi
-ERROR: Could not find a version that satisfies the requirement fastapi (from versions: none)
+## What was verified in the original build (still holds)
 
-$ npm ping
-npm error code E403
-npm error 403 Forbidden ... x-deny-reason: host_not_allowed
-```
+1. All 24 backend Python files compile cleanly (`py_compile`).
+2. All config/JSON files (`devcontainer.json`, `package.json`, three
+   `tsconfig*.json`) are valid.
+3. The scheduling algorithm (weighted interval scheduling DP) was
+   independently cross-checked against a brute-force optimality proof over
+   200 randomized instances.
+4. The demo/offline TLE fixture is a real, independently published SGP4
+   reference vector (Vanguard 1 / NORAD 5), not an invented one — see
+   `docs/DATA_SOURCES.md`.
+5. Frontend API types (`src/types/index.ts`) mirror the backend Pydantic
+   schemas (`app/models/schemas.py`) field-for-field.
 
-### What was done to compensate
-
-Rather than just asserting the untestable parts are "probably fine":
-
-1. **The highest-risk logic — the scheduling algorithm — was extracted
-   into a dependency-free standalone script and executed for real**,
-   including a brute-force optimality proof over 200 randomized
-   interval-scheduling instances (all matched the DP's answer exactly).
-   This is the same algorithm shipped in `app/services/scheduler.py`.
-2. **All domain validation rules were executed for real** (14/14 cases),
-   using the actual `app/core/validation.py` module (it has zero
-   framework dependencies by design, specifically so it could be tested
-   without FastAPI/Pydantic installed).
-3. Every backend Python file was compiled (`py_compile`) to catch syntax
-   errors, import-path typos, and structural mistakes.
-4. The demo/offline TLE fixture uses a **real, independently-published**
-   reference vector (Vanguard 1 / NORAD 5, from the canonical SGP4
-   validation paper) rather than an invented one — see
-   `docs/DATA_SOURCES.md` for why and its provenance.
-5. All API request/response shapes in the frontend (`src/types/index.ts`)
-   were written to mirror the backend Pydantic schemas
-   (`app/models/schemas.py`) field-for-field to minimize integration risk.
-
-## Exact commands to complete verification in Codespaces
+## Reproduce this verification yourself
 
 ```bash
-# 1. Open in Codespaces (or run .devcontainer/postCreate.sh manually)
-bash .devcontainer/postCreate.sh
-
-# 2. Backend tests
+# Backend
 cd backend
-pytest -v
-# Expect: test_validation.py, test_scheduler.py, test_pass_predictor.py,
-# test_api.py all passing (33 tests total across the four files).
+pip install -r requirements.txt        # add --break-system-packages if needed
+pytest -v                              # expect 44 passed
 
-# 3. Frontend build
+# Frontend
 cd ../frontend
-npm run build
-# Expect: `dist/` produced with no TypeScript errors.
+npm install
+npm run build                          # expect dist/ with no TS errors
 
-# 4. Run both services and do a manual end-to-end pass
+# Run both services and smoke-test
 cd ../backend && uvicorn app.main:app --reload --port 8000 &
 cd ../frontend && npm run dev -- --host 0.0.0.0 &
-
-# 5. HTTP smoke test against the live server
 bash ../tests/smoke_test.sh http://localhost:8000
 ```
 
@@ -114,17 +95,17 @@ bash ../tests/smoke_test.sh http://localhost:8000
 - [x] Full documentation set (README, ARCHITECTURE, METHODOLOGY,
       DATA_SOURCES, API, DEPLOYMENT)
 
-## Known limitations (also documented in README / docs/METHODOLOGY.md)
+## Known limitations
 
-- SGP4/TLE staleness affects accuracy over time.
-- No atmospheric refraction / ionospheric / terrain modelling.
-- No solar-illumination computation in the MVP.
-- Scheduler considers each request's single best candidate pass, not all
-  feasible passes.
-- No persistence layer (stateless MVP by design).
-- Live-mode network fetch, full pytest run, and frontend production build
-  were written and reviewed but not executed inside this build sandbox
-  due to the network restriction described above — they are expected to
-  pass in Codespaces based on the syntax verification and the algorithmic
-  correctness testing that *was* performed, but you should run the exact
-  commands above yourself before treating this as fully verified.
+- SGP4/TLE staleness affects accuracy over time since epoch.
+- No atmospheric refraction / ionospheric / local-terrain RF modelling.
+- No solar-illumination ("sunlit") computation in the MVP.
+- Scheduler considers each request's single best candidate pass (highest
+  elevation), not all feasible passes.
+- No persistence layer — schedules exist for the browser session unless
+  exported (stateless MVP by design).
+- Live Celestrak fetch has not been exercised end-to-end in any sandbox
+  used so far; confirm it in an environment with unrestricted network
+  access before relying on live mode.
+
+Full detail in `docs/METHODOLOGY.md`.
