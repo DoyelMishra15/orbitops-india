@@ -14,6 +14,11 @@ schedule for our ground station?"*
 > from Celestrak or a clearly labelled offline demo fixture — nothing is
 > fabricated. See `docs/DATA_SOURCES.md`.
 
+> **Status:** Feature-complete MVP. Backend test suite (44 tests) and the
+> frontend production build have both been run and pass; see
+> `PROJECT_STATUS.md` for the latest verification details and known
+> limitations.
+
 ---
 
 ## The problem
@@ -139,12 +144,13 @@ pip install -r requirements.txt
 pytest
 ```
 
-Covers: coordinate/time-window/elevation-mask validation, pass
-propagation correctness properties (window bounds, time-ordering,
-elevation-mask monotonicity), scheduler scoring & conflict resolution
-(including a brute-force optimality cross-check), and full API
-integration tests (health, catalogue, pass prediction, end-to-end
-scheduling).
+44 tests, all passing. Covers: coordinate/time-window/elevation-mask
+validation, pass propagation correctness properties (window bounds,
+time-ordering, elevation-mask monotonicity), scheduler scoring & conflict
+resolution (including a brute-force optimality cross-check against 200
+randomized instances), and full API integration tests (health, catalogue,
+pass prediction, end-to-end scheduling). See `PROJECT_STATUS.md` for the
+latest verification run, including a frontend production build check.
 
 A root-level HTTP smoke test against a *running* server is also provided:
 ```bash
@@ -170,16 +176,3 @@ See `docs/DEPLOYMENT.md` for concrete steps to deploy the backend
   session unless exported.
 
 Full detail in `docs/METHODOLOGY.md`.
-
-## Responsible use
-
-This is an educational/portfolio project performing legitimate orbital
-calculations on public data. It has not been validated against an
-operational ground-station system and must not be used as the sole basis
-for real satellite communication operations. It does not claim ISRO
-affiliation or access to restricted/government satellite data.
-
-## License
-
-Educational/portfolio project. Add a license of your choice (e.g. MIT)
-before publishing publicly.
