@@ -1,0 +1,30 @@
+# OrbitOps India — DEMO / ARCHIVE MODE TLE FIXTURE
+#
+# This file intentionally contains ONE two-line element set: the standard
+# SGP4 verification vector for "Vanguard 1" (NORAD catalogue ID 5), as
+# published in "Revisiting Spacetrack Report #3" (Vallado, Crawford,
+# Hujsak, Kelso — AIAA 2006-6753) and reused as a canonical test fixture
+# in numerous open-source SGP4 implementations, including python-sgp4's
+# own test suite.
+#
+# WHY THIS TLE:
+#   - It is publicly published and independently verifiable, so it carries
+#     no risk of being a fabricated/invented orbital element set.
+#   - It has a well-known epoch (day 179.78495062 of the year 2000) which
+#     makes it obviously NOT a live/current position — appropriate for a
+#     clearly-labelled offline demo/self-test fixture rather than for
+#     presenting fake "current" passes.
+#
+# WHAT IT IS NOT:
+#   - It is NOT an Indian satellite, NOT a CubeSat, and NOT live data.
+#   - Predictions produced from it should never be interpreted as real,
+#     present-day satellite passes.
+#
+# For real, current Indian CubeSat / small-satellite passes, switch the
+# application to LIVE mode, which fetches current public TLEs from
+# Celestrak (https://celestrak.org) at request time. Live mode requires
+# outbound network access (available in GitHub Codespaces / any normal
+# deployment, but disabled in some sandboxed build environments).
+VANGUARD 1 (SGP4 REFERENCE VECTOR)
+1 00005U 58002B   00179.78495062  .00000023  00000-0  28098-4 0  4753
+2 00005  34.2682 348.7242 1859667 331.7664  19.3264 10.82419157413667
